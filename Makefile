@@ -1,5 +1,5 @@
-APP_NAME    := lidlatte
-BUNDLE_ID   := dev.zyx1121.lidlatte
+APP_NAME    := Cappuccino
+BUNDLE_ID   := dev.zyx1121.cappuccino
 BIN_PATH    := .build/release/$(APP_NAME)
 APP_BUNDLE  := build/$(APP_NAME).app
 CONTENTS    := $(APP_BUNDLE)/Contents
@@ -19,7 +19,7 @@ bundle: build
 	@mkdir -p $(CONTENTS)/MacOS $(CONTENTS)/Resources
 	@cp $(BIN_PATH) $(CONTENTS)/MacOS/$(APP_NAME)
 	@cp Resources/Info.plist $(CONTENTS)/Info.plist
-	@cp scripts/grant.sh scripts/lidlatte.sudoers.template $(CONTENTS)/Resources/
+	@cp scripts/grant.sh scripts/cappuccino.sudoers.template $(CONTENTS)/Resources/
 	@chmod +x $(CONTENTS)/Resources/grant.sh
 	@codesign --force --deep --options runtime --sign $(SIGN_ID) $(APP_BUNDLE)
 	@echo "[OK] $(APP_BUNDLE) built and signed"

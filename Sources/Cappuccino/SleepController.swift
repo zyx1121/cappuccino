@@ -5,11 +5,11 @@ import AppKit
 /// (the one case that warrants the one-time setup); `.failed` = anything else.
 enum SleepToggleResult: Equatable { case ok, grantMissing, failed(String) }
 
-/// Owns the single privileged lever this app pulls: macOS' undocumented-but-real
-/// `pmset disablesleep`, which is the ONLY thing that keeps a Mac awake with the lid closed
-/// (an IOPMAssertion / `caffeinate` cannot — lid close is forced sleep, not idle sleep).
-/// Reads need no root; writes go through a tightly-scoped passwordless sudoers grant so a
-/// GUI app can flip it without a password prompt on every toggle.
+/// Owns the privileged levers this app pulls: macOS' undocumented-but-real `pmset disablesleep`
+/// (the ONLY thing that keeps a Mac awake with the lid closed — an IOPMAssertion / `caffeinate`
+/// cannot, since lid close is forced sleep, not idle sleep), plus `pmset displaysleepnow` to
+/// park the built-in panel. Reads need no root; writes go through a tightly-scoped passwordless
+/// sudoers grant so a GUI app can flip them without a password prompt every time.
 @MainActor
 final class SleepController {
     /// Read current state (no root). `pmset -g` prints `SleepDisabled  1` when enabled.
@@ -24,9 +24,9 @@ final class SleepController {
     }
 
     /// Flip lid-close sleep prevention. Uses `sudo -n` (never prompt: a GUI app has no TTY)
-    /// against the exact argv the NOPASSWD grant permits. Decides purely on sudo's exit
-    /// status, never on a follow-up SleepDisabled read — a safety net flipping sleep back on
-    /// must NOT look like "permission missing" and trigger a spurious auth prompt.
+    /// against the exact argv the NOPASSWD grant permits. Decides purely on sudo's exit status,
+    /// never on a follow-up SleepDisabled read — a safety net flipping sleep back on must NOT
+    /// look like "permission missing" and trigger a spurious auth prompt.
     @discardableResult
     func setSleepDisabled(_ on: Bool) -> SleepToggleResult {
         let (exit, _, err) = runPrivileged(["-n", "/usr/bin/pmset", "-a", "disablesleep", on ? "1" : "0"])
@@ -38,15 +38,22 @@ final class SleepController {
         return .failed(err.isEmpty ? "exit \(exit)" : err.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    /// Immediately sleep the built-in display (does NOT sleep the system). Routed through the
+    /// same passwordless grant so it works regardless of whether it needs root. Best-effort —
+    /// if the installed grant predates this command the display just stays on; no error surfaced.
+    func displaySleepNow() {
+        _ = runPrivileged(["-n", "/usr/bin/pmset", "displaysleepnow"])
+    }
+
     /// Install the one-time scoped grant via a SINGLE native auth sheet (Touch ID / password)
-    /// — no Terminal. Runs the bundled, audited grant.sh as root through osascript; grant.sh
-    /// is root-aware and writes the sudoers drop-in directly. Returns true once the
-    /// passwordless grant is in place; afterwards the app never asks again.
+    /// — no Terminal. Runs the bundled, audited grant.sh as root through osascript; grant.sh is
+    /// root-aware and writes the sudoers drop-in directly. Returns true once the grant is in
+    /// place; afterwards the app never asks again.
     func installGrant() -> Bool {
         let intro = NSAlert()
         intro.alertStyle = .informational
         intro.messageText = "啟用闔蓋不睡"
-        intro.informativeText = "lidlatte 需要切換一個受保護的 macOS 設定(pmset disablesleep),請授權一次。macOS 會要求驗證(Touch ID 或密碼)。之後切換即時生效,不再詢問。"
+        intro.informativeText = "Cappuccino 需要切換受保護的 macOS 設定(pmset disablesleep / displaysleepnow),請授權一次。macOS 會要求驗證(Touch ID 或密碼)。之後切換即時生效,不再詢問。"
         intro.addButton(withTitle: "啟用")
         intro.addButton(withTitle: "取消")
         NSApp.activate(ignoringOtherApps: true)
@@ -56,7 +63,7 @@ final class SleepController {
         let grant = res + "/grant.sh"
         // Under the native auth sheet grant.sh runs as root with SUDO_USER unset, so pass the
         // real user explicitly or the grant would be written for "root" (useless).
-        let shellCmd = "LIDLATTE_USER='\(NSUserName())' /bin/bash '\(grant)' --yes"
+        let shellCmd = "CAPPUCCINO_USER='\(NSUserName())' /bin/bash '\(grant)' --yes"
         let escaped = shellCmd
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")

@@ -1,8 +1,8 @@
 import AppKit
 
-/// The brain: turns three inputs — Claude Code activity, the user's menu choices, and power
-/// state — into the one output that matters (`disablesleep` on/off), and keeps the system
-/// reconciled to that decision.
+/// The brain: turns four inputs — Claude Code activity, the user's menu choices, power state,
+/// and lid state — into the one output that matters (`disablesleep` on/off), keeps the system
+/// reconciled to that decision, and parks the built-in panel when the lid shuts (burn-in).
 ///
 /// Desired keep-awake = (manual override OR (auto && agent busy)), then vetoed by the safety
 /// nets: a hard battery floor (wins even over a manual override — never drain to empty) and
@@ -12,6 +12,7 @@ final class Coordinator {
     private let sleep = SleepController()
     private let activity = ActivityMonitor()
     private let power = PowerGuard()
+    private let lid = LidMonitor()
     private var pollTimer: Timer?
 
     private var batteryStopActive = false
@@ -44,11 +45,17 @@ final class Coordinator {
     func start() {
         activity.onChange = { [weak self] _ in self?.reconcile() }
         power.onPowerChange = { [weak self] in self?.reconcile() }   // AS: re-apply on AC change
+        lid.onLidChange = { [weak self] in self?.handleLidChange() }
         activity.start()
         power.start()
-        // Periodic reconcile catches a slowly-draining battery crossing the floor.
+        lid.start()
+        // Periodic reconcile catches a slowly-draining battery crossing the floor, and lets the
+        // process tick end keep-awake once every claude session has exited.
         pollTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.reconcile() }
+            Task { @MainActor in
+                self?.activity.tick()
+                self?.reconcile()
+            }
         }
         reconcile()   // reflect TRUE system state on launch; never assume
     }
@@ -56,7 +63,7 @@ final class Coordinator {
     /// Stop keeping the Mac awake and restore normal sleep — called on quit so an unattended
     /// machine is never left unable to sleep with no app managing the safety nets.
     func shutdown() {
-        activity.stop(); power.stop(); pollTimer?.invalidate()
+        activity.stop(); power.stop(); lid.stop(); pollTimer?.invalidate()
         if sleep.isSleepDisabled() { sleep.setSleepDisabled(false) }
     }
 
@@ -97,22 +104,31 @@ final class Coordinator {
             switch result {
             case .ok:
                 grantKnownMissing = false
+                // Just kept awake while the lid is already shut → park the panel (burn-in).
+                if want, lid.isLidClosed() { sleep.displaySleepNow() }
             case .grantMissing:
                 if !grantKnownMissing {   // first discovery → notify exactly once
                     notify(interactive
                            ? "授權未完成,無法闔蓋不睡。"
-                           : "lidlatte 偵測到 Claude Code 在工作,需要授權才能闔蓋不睡:點選單列圖示開「持續闔蓋不睡」一次即可授權。")
+                           : "Cappuccino 偵測到 Claude Code 在工作,需要授權才能闔蓋不睡:點選單列圖示開「持續闔蓋不睡」一次即可授權。")
                 }
                 grantKnownMissing = true
             case .failed(let msg):
-                NSLog("lidlatte: disablesleep toggle failed: %@", msg)
+                NSLog("Cappuccino: disablesleep toggle failed: %@", msg)
             }
         }
         onStateChange?()
     }
 
+    /// Lid folded shut while we're keeping the Mac awake → park the built-in panel so it isn't
+    /// left powered behind a closed lid (burn-in + wasted battery). Lid does not affect the
+    /// keep-awake decision itself, so no reconcile needed here.
+    private func handleLidChange() {
+        if isKeepingAwake, lid.isLidClosed() { sleep.displaySleepNow() }
+    }
+
     private func notify(_ message: String) {
-        let script = "display notification \"\(message)\" with title \"lidlatte\""
+        let script = "display notification \"\(message)\" with title \"Cappuccino\""
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         p.arguments = ["-e", script]

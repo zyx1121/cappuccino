@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# grant.sh — install ONLY the passwordless grant that lets lidlatte toggle lid-close sleep
+# grant.sh — install ONLY the passwordless grant that lets Cappuccino toggle lid-close sleep
 # without a prompt. Self-contained: works from a clone OR from inside the app bundle
 # (Contents/Resources), so cask users can run it after install.
 #
 # It writes one tightly-scoped sudoers drop-in (root:wheel, 0440) permitting exactly two
-# commands and nothing else. Undo: `sudo rm /etc/sudoers.d/lidlatte-disablesleep`.
+# commands and nothing else. Undo: `sudo rm /etc/sudoers.d/cappuccino-disablesleep`.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SUDOERS_DST="/etc/sudoers.d/lidlatte-disablesleep"
+SUDOERS_DST="/etc/sudoers.d/cappuccino-disablesleep"
 
-# Resolve the REAL user. Prefer LIDLATTE_USER (the app passes it, because under the native
+# Resolve the REAL user. Prefer CAPPUCCINO_USER (the app passes it, because under the native
 # auth sheet this script runs as root with SUDO_USER unset), then SUDO_USER, then the caller.
-USER_NAME="${LIDLATTE_USER:-${SUDO_USER:-$(id -un)}}"
+USER_NAME="${CAPPUCCINO_USER:-${SUDO_USER:-$(id -un)}}"
 # Never install a root-owned grant (useless): if we resolved to root/empty, fall back to the
 # GUI console user, and refuse if still unresolved.
 if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
@@ -30,18 +30,18 @@ SUDO="sudo"
 
 # Source of truth for the grant line: the repo/bundle template if present, else the identical
 # inline string.
-TEMPLATE="$SCRIPT_DIR/lidlatte.sudoers.template"
+TEMPLATE="$SCRIPT_DIR/cappuccino.sudoers.template"
 if [ -f "$TEMPLATE" ]; then
   GRANT="$(sed "s/__USER__/$USER_NAME/" "$TEMPLATE")"
 else
-  GRANT="$USER_NAME ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1"
+  GRANT="$USER_NAME ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset displaysleepnow"
 fi
 
-echo "lidlatte will install this passwordless grant at $SUDOERS_DST (root:wheel, 0440):"
+echo "Cappuccino will install this passwordless grant at $SUDOERS_DST (root:wheel, 0440):"
 echo ""
 echo "    $GRANT"
 echo ""
-echo "It permits ONLY turning lid-close sleep on (1) or off (0). Nothing else."
+echo "It permits ONLY pmset disablesleep 0/1 and displaysleepnow. Nothing else."
 if [ "${1:-}" != "--yes" ] && [ "${1:-}" != "-y" ]; then
   read -r -p "Continue? [y/N] " reply
   case "$reply" in [yY]*) ;; *) echo "Aborted."; exit 1 ;; esac

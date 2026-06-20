@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(floor)
 
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "結束 lidlatte", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "結束 Cappuccino", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
 
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if let button = statusItem.button {
             let name = coord.isKeepingAwake ? "bolt.fill" : "moon.zzz"
-            let img = NSImage(systemSymbolName: name, accessibilityDescription: "lidlatte")
+            let img = NSImage(systemSymbolName: name, accessibilityDescription: "Cappuccino")
             img?.isTemplate = true
             button.image = img
         }

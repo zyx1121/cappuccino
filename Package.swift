@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "lidlatte",
+    name: "Cappuccino",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "lidlatte", path: "Sources/lidlatte")
+        .executableTarget(name: "Cappuccino", path: "Sources/Cappuccino")
     ]
 )

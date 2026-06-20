@@ -4,11 +4,15 @@ import Foundation
 /// FSEvents and exposes a debounced "busy" signal: `isBusy` flips true on any file event and
 /// back to false after `idleTimeout` of silence.
 ///
-/// This is a PROXY for "an agent is working": Claude Code appends to its session .jsonl on
-/// every turn / tool call, so disk churn ≈ active work. The blind spot: a long inference or a
-/// waiting-on-you gap with no writes can read as idle. `idleTimeout` is the safety margin —
-/// kept generous (120s) so a model that's thinking isn't mistaken for one that's finished.
-/// TODO(detection): tighten with a process + I/O signal (claude pid busy) to close the gap.
+/// "Busy" is a PROXY for "an agent is working": Claude Code appends to its session .jsonl on
+/// every turn / tool call, so disk churn ≈ active work. Two refinements close the obvious gaps:
+///   • idleTimeout is generous (180s) so a single long inference with no writes isn't mistaken
+///     for finished work.
+///   • `tick()` (polled by the coordinator) ends keep-awake promptly when NO `claude` process
+///     is left alive — finishing all sessions sleeps the Mac without waiting out the timeout.
+/// Residual blind spot: one inference longer than idleTimeout while a claude process is still
+/// alive can still read as idle; killing that fully needs a streaming busy signal Claude Code
+/// doesn't expose.
 @MainActor
 final class ActivityMonitor {
     private(set) var isBusy = false
@@ -18,9 +22,9 @@ final class ActivityMonitor {
     private let watchedPaths: [String]
     private var stream: FSEventStreamRef?
     private var idleTimer: Timer?
-    private let queue = DispatchQueue(label: "dev.zyx.lidlatte.fsevents")
+    private let queue = DispatchQueue(label: "dev.zyx.cappuccino.fsevents")
 
-    init(idleTimeout: TimeInterval = 120) {
+    init(idleTimeout: TimeInterval = 180) {
         self.idleTimeout = idleTimeout
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         self.watchedPaths = [home + "/.claude/projects"]
@@ -59,6 +63,24 @@ final class ActivityMonitor {
         FSEventStreamRelease(s)
         stream = nil
         idleTimer?.invalidate(); idleTimer = nil
+    }
+
+    /// Poll-driven (called by the coordinator): if we think we're busy but no Claude Code
+    /// process is alive, the work is over — go idle now instead of waiting out idleTimeout.
+    func tick() {
+        if isBusy && !hasClaudeProcess() { markIdle() }
+    }
+
+    /// True if any Claude Code CLI process (`claude`) is running. A probe failure is treated as
+    /// "present" (fail-safe: don't sleep out from under a possibly-working agent).
+    private func hasClaudeProcess() -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        p.arguments = ["-x", "claude"]
+        p.standardOutput = Pipe(); p.standardError = Pipe()
+        do { try p.run() } catch { return true }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
     }
 
     private func markActive() {

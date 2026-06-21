@@ -1,0 +1,13 @@
+# 複製成 Makefile.local（gitignored）—— 本機私有簽名設定，不進版控。
+
+# 開發態：Apple Development cert 的 SHA-1（撈：security find-identity -p codesigning -v）。
+# 設了之後 TCC 權限跨 rebuild 不用重 grant；不設就用預設 ad-hoc（每次 rebuild 要重 grant）。
+# SIGN_ID := XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# 分發：Developer ID Application cert 全名（make release 用）。
+# DEV_ID_APP := Developer ID Application: YongXiang Zhan (XXXXXXXXXX)
+
+# notarytool keychain profile（一次性建立後存進 keychain）：
+#   xcrun notarytool store-credentials cappuccino-notary \
+#     --apple-id <apple-id> --team-id <TEAMID> --password <app-specific-password>
+# NOTARY_PROFILE := cappuccino-notary

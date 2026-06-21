@@ -1,0 +1,15 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      # SIGN_ID 預設 ad-hoc —— CI 只驗「編得過 + 組得出 bundle + 簽得起來」，不碰私鑰。
+      - name: Build & bundle (ad-hoc)
+        run: make bundle

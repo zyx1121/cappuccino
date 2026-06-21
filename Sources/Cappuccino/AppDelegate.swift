@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // menubar-only (LSUIElement)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        setMenubarIcon()
         coord.onStateChange = { [weak self] in self?.updateUI() }
         coord.start()
         buildMenu()
@@ -17,6 +18,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         coord.shutdown()   // restore normal sleep; never leave an unattended Mac unable to sleep
+    }
+
+    // MARK: - Menubar icon
+
+    // 選單列圖示 = 全家共用的 zyx 品牌標(Resources/MenubarIcon.png,template),設一次即可。
+    // 狀態(闔蓋不睡 / 正常睡眠)靠選單裡的狀態文字表達,不靠這顆圖示切換。找不到才退回 SF Symbol。
+    private func setMenubarIcon() {
+        guard let button = statusItem.button else { return }
+        if let p = Bundle.main.path(forResource: "MenubarIcon", ofType: "png"),
+           let mark = NSImage(contentsOfFile: p) {
+            let h: CGFloat = 18
+            mark.size = NSSize(width: h * mark.size.width / max(mark.size.height, 1), height: h)
+            mark.isTemplate = true
+            button.image = mark
+        } else {
+            button.image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Cappuccino")
+            button.image?.isTemplate = true
+        }
     }
 
     // MARK: - Menu construction
@@ -75,13 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateUI() {
         guard let menu = statusItem.menu else { return }
 
-        if let button = statusItem.button {
-            let name = coord.isKeepingAwake ? "bolt.fill" : "moon.zzz"
-            let img = NSImage(systemSymbolName: name, accessibilityDescription: "Cappuccino")
-            img?.isTemplate = true
-            button.image = img
-        }
-
+        // 選單列圖示固定為 zyx mark(在 launch 設一次),狀態變化只更新下面的狀態文字。
         if let s = menu.item(withTag: 100) {
             switch coord.mode {
             case .sleeping:   s.title = coord.isBusy ? "偵測到工作,啟用中…" : "正常睡眠"

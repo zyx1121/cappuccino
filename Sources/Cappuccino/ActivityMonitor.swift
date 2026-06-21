@@ -22,7 +22,7 @@ final class ActivityMonitor {
     private let watchedPaths: [String]
     private var stream: FSEventStreamRef?
     private var idleTimer: Timer?
-    private let queue = DispatchQueue(label: "dev.zyx.cappuccino.fsevents")
+    private let queue = DispatchQueue(label: "tw.zyx.cappuccino.fsevents")
 
     init(idleTimeout: TimeInterval = 180) {
         self.idleTimeout = idleTimeout

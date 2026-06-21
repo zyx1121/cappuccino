@@ -32,7 +32,7 @@ bundle: build
 	@cp $(BIN_PATH) $(CONTENTS)/MacOS/$(APP_NAME)
 	@cp Resources/Info.plist $(CONTENTS)/Info.plist
 	@cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns
-	@cp Resources/MenubarIcon.png $(CONTENTS)/Resources/MenubarIcon.png
+	@cp Resources/MenubarIcon.pdf $(CONTENTS)/Resources/MenubarIcon.pdf
 	@cp scripts/grant.sh $(CONTENTS)/Resources/ && chmod +x $(CONTENTS)/Resources/grant.sh
 	@cp scripts/cappuccino.sudoers.template $(CONTENTS)/Resources/
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --sign $(SIGN_ID) $(APP_BUNDLE)
@@ -65,7 +65,7 @@ release: build
 	@cp $(BIN_PATH) $(CONTENTS)/MacOS/$(APP_NAME)
 	@cp Resources/Info.plist $(CONTENTS)/Info.plist
 	@cp Resources/AppIcon.icns $(CONTENTS)/Resources/AppIcon.icns
-	@cp Resources/MenubarIcon.png $(CONTENTS)/Resources/MenubarIcon.png
+	@cp Resources/MenubarIcon.pdf $(CONTENTS)/Resources/MenubarIcon.pdf
 	@cp scripts/grant.sh $(CONTENTS)/Resources/ && chmod +x $(CONTENTS)/Resources/grant.sh
 	@cp scripts/cappuccino.sudoers.template $(CONTENTS)/Resources/
 	@codesign --force --options runtime --timestamp --entitlements $(ENTITLEMENTS) --sign "$(DEV_ID_APP)" $(APP_BUNDLE)

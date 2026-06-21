@@ -22,11 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Menubar icon
 
-    // 選單列圖示 = 全家共用的 zyx 品牌標(Resources/MenubarIcon.png,template),設一次即可。
+    // 選單列圖示 = 全家共用的 zyx 品牌標(Resources/MenubarIcon.pdf,template),設一次即可。
     // 狀態(闔蓋不睡 / 正常睡眠)靠選單裡的狀態文字表達,不靠這顆圖示切換。找不到才退回 SF Symbol。
     private func setMenubarIcon() {
         guard let button = statusItem.button else { return }
-        if let p = Bundle.main.path(forResource: "MenubarIcon", ofType: "png"),
+        if let p = Bundle.main.path(forResource: "MenubarIcon", ofType: "pdf"),
            let mark = NSImage(contentsOfFile: p) {
             let h: CGFloat = 18
             mark.size = NSSize(width: h * mark.size.width / max(mark.size.height, 1), height: h)
